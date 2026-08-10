@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cadre_entreprise"
+version = "0.1.0"
+description = "Kit de développement standardisé pour la plateforme d'entreprise"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "streamlit",
+    "supabase",
+    "bcrypt"
+]
