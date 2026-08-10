@@ -1,5 +1,5 @@
 import bcrypt
-from modules.database import supabase
+from cadre_entreprise.database import supabase
 import streamlit as st
 
 

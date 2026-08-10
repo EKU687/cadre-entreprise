@@ -1,4 +1,4 @@
-import modules.auth as auth
+import cadre_entreprise.auth as auth
 import streamlit as st
 
 
