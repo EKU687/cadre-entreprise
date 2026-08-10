@@ -38,7 +38,7 @@ def afficher_ecran_login(nom_application: str = "Application", icone: str = "�
 
 
 def afficher_sidebar_standard(
-    url_portail_hub: str = "https://portail-hub.streamlit.app",
+    url_portail_hub: str = "https://portail-gnc.streamlit.app",
 ):
   """Affiche la barre latérale standardisée avec profil, retour portail et déconnexion."""
   user = auth.get_user_info()
