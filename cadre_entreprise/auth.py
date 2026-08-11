@@ -17,7 +17,7 @@ def hacher_mot_de_passe(mot_de_passe_clair: str) -> str:
 def connecter(login: str, mdp_saisi: str):
   """Vérifie le login/mdp dans Supabase et initialise la session Streamlit.
 
-  Gère également le cas du changement de mot de passe obligatoire.
+  Gère rigoureusement le changement de mot de passe obligatoire.
   """
   login_clean = str(login).lower().strip()
 
@@ -43,10 +43,19 @@ def connecter(login: str, mdp_saisi: str):
         mdp_saisi.encode("utf-8"), hash_stocke.encode("utf-8")
     ):
 
-      # 🎯 CAS 1 : Première connexion -> Changement de MDP obligatoire
-      if user.get("changement_mdp_requis", False):
+      # 🎯 VÉRIFICATION SÉCURISÉE DU FANION (Booleen ou String 'true')
+      valeur_changement = user.get("changement_mdp_requis")
+      doit_changer = (valeur_changement is True) or (
+          str(valeur_changement).lower() in ["true", "1", "t"]
+      )
+
+      # 🎯 CAS 1 : Première connexion -> Blocage jusqu'au changement
+      if doit_changer:
         st.session_state["doit_changer_mdp"] = True
         st.session_state["user_temp"] = user
+        st.session_state["connecte"] = (
+            False  # ⚠️ On NE connecte PAS tant que le MDP n'est pas changé
+        )
         return (
             True,
             "🔒 Première connexion : Veuillez choisir un nouveau mot de passe.",
