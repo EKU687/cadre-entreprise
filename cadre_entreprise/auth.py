@@ -15,10 +15,7 @@ def hacher_mot_de_passe(mot_de_passe_clair: str) -> str:
 
 
 def connecter(login: str, mdp_saisi: str):
-  """Vérifie le login/mdp dans Supabase et initialise la session Streamlit.
-
-  Gère rigoureusement le changement de mot de passe obligatoire.
-  """
+  """Vérifie le login/mdp dans Supabase et initialise la session Streamlit."""
   login_clean = str(login).lower().strip()
 
   if not login_clean or not mdp_saisi:
@@ -42,29 +39,8 @@ def connecter(login: str, mdp_saisi: str):
     if bcrypt.checkpw(
         mdp_saisi.encode("utf-8"), hash_stocke.encode("utf-8")
     ):
-
-      # 🎯 VÉRIFICATION SÉCURISÉE DU FANION (Booleen ou String 'true')
-      valeur_changement = user.get("changement_mdp_requis")
-      doit_changer = (valeur_changement is True) or (
-          str(valeur_changement).lower() in ["true", "1", "t"]
-      )
-
-      # 🎯 CAS 1 : Première connexion -> Blocage jusqu'au changement
-      if doit_changer:
-        st.session_state["doit_changer_mdp"] = True
-        st.session_state["user_temp"] = user
-        st.session_state["connecte"] = (
-            False  # ⚠️ On NE connecte PAS tant que le MDP n'est pas changé
-        )
-        return (
-            True,
-            "🔒 Première connexion : Veuillez choisir un nouveau mot de passe.",
-        )
-
-      # 🎯 CAS 2 : Connexion normale
       st.session_state["utilisateur"] = user
       st.session_state["connecte"] = True
-      st.session_state["doit_changer_mdp"] = False
       return True, f"✅ Bienvenue {user.get('nom', login_clean)} !"
     else:
       return False, "❌ Identifiant ou mot de passe incorrect."
@@ -73,17 +49,59 @@ def connecter(login: str, mdp_saisi: str):
     return False, f"❌ Erreur de connexion : {e}"
 
 
-def changer_mot_de_passe(login: str, nouveau_mdp: str):
-  """Met à jour le mot de passe dans Supabase et repasse 'changement_mdp_requis' à False."""
+def changer_mon_mot_de_passe(
+    login: str, mdp_actuel: str, nouveau_mdp: str
+) -> tuple[bool, str]:
+  """Permet à un utilisateur connecté de modifier son propre mot de passe.
+
+  Vérifie d'abord que le mot de passe actuel saisi est valide.
+  """
+  login_clean = str(login).lower().strip()
+
+  if not mdp_actuel or not nouveau_mdp:
+    return False, "⚠️ Veuillez remplir tous les champs du formulaire."
+
+  if len(nouveau_mdp) < 6:
+    return (
+        False,
+        "⚠️ Le nouveau mot de passe doit contenir au moins 6 caractères.",
+    )
+
   try:
-    hash_securise = hacher_mot_de_passe(nouveau_mdp)
+    # 1. Vérification du mot de passe actuel en base de données
+    res = (
+        supabase.table("Utilisateur")
+        .select("mdp")
+        .eq("login", login_clean)
+        .execute()
+    )
 
-    supabase.table("Utilisateur").update({
-        "mdp": hash_securise,
-        "changement_mdp_requis": False,
-    }).eq("login", str(login).lower().strip()).execute()
+    if not res.data or len(res.data) == 0:
+      return False, "❌ Utilisateur introuvable."
 
-    return True, "✅ Mot de passe mis à jour avec succès !"
+    hash_actuel = res.data[0].get("mdp", "")
+
+    if not bcrypt.checkpw(
+        mdp_actuel.encode("utf-8"), hash_actuel.encode("utf-8")
+    ):
+      return False, "❌ Le mot de passe actuel est incorrect."
+
+    # 2. Hachage du nouveau mot de passe et mise à jour dans Supabase
+    nouveau_hash = hacher_mot_de_passe(nouveau_mdp)
+
+    supabase.table("Utilisateur").update({"mdp": nouveau_hash}).eq(
+        "login", login_clean
+    ).execute()
+
+    # 3. Mise à jour du dictionnaire utilisateur en session si connecté
+    if (
+        st.session_state.get("utilisateur")
+        and st.session_state["utilisateur"].get("login") == login_clean
+    ):
+      st.session_state["utilisateur"]["mdp"] = nouveau_hash
+
+    return True, "✅ Votre mot de passe a été modifié avec succès !"
+
   except Exception as e:
     return False, f"❌ Erreur lors du changement de mot de passe : {e}"
 
@@ -92,15 +110,15 @@ def deconnecter():
   """Réinitialise la session utilisateur et recharge la page."""
   st.session_state["utilisateur"] = None
   st.session_state["connecte"] = False
-  st.session_state["doit_changer_mdp"] = False
   st.session_state["mode_edition"] = False
   st.rerun()
 
 
 def est_connecte() -> bool:
   """Vérifie si un utilisateur est actuellement authentifié dans la session."""
-  return st.session_state.get("connecte", False) and not st.session_state.get(
-      "doit_changer_mdp", False
+  return bool(
+      st.session_state.get("connecte", False)
+      and st.session_state.get("utilisateur")
   )
 
 
