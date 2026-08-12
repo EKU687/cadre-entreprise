@@ -3,6 +3,7 @@
 # =====================================================================
 import bcrypt
 import streamlit as st
+import streamlit.components.v1 as components
 from cadre_entreprise.database import supabase
 
 
@@ -107,12 +108,20 @@ def changer_mon_mot_de_passe(
 
 
 def deconnecter():
-  """Réinitialise la session utilisateur et recharge la page."""
-  st.session_state["utilisateur"] = None
-  st.session_state["connecte"] = False
-  st.session_state["mode_edition"] = False
-  st.rerun()
-
+    """Réinitialise la session utilisateur et force la redirection vers le portail central."""
+    # 1. Nettoyage de ta session (Ta logique intacte)
+    st.session_state["utilisateur"] = None
+    st.session_state["connecte"] = False
+    st.session_state["mode_edition"] = False
+    
+    # 2. Redirection forcée (Remplace le st.rerun)
+    url_portail = "https://portail-gnc.streamlit.app"
+    redirection_js = f"""
+        <script>
+            window.parent.location.href = "{url_portail}";
+        </script>
+    """
+    components.html(redirection_js, height=0)
 
 def est_connecte() -> bool:
   """Vérifie si un utilisateur est actuellement authentifié dans la session."""
