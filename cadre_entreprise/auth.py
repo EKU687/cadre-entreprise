@@ -109,19 +109,24 @@ def changer_mon_mot_de_passe(
 
 def deconnecter():
     """Réinitialise la session utilisateur et force la redirection vers le portail central."""
-    # 1. Nettoyage de ta session (Ta logique intacte)
+    # 1. Nettoyage de la session
     st.session_state["utilisateur"] = None
     st.session_state["connecte"] = False
     st.session_state["mode_edition"] = False
     
-    # 2. Redirection forcée (Remplace le st.rerun)
+    # 2. Double technique de redirection (JS + Meta Refresh)
     url_portail = "https://portail-gnc.streamlit.app"
-    redirection_js = f"""
+    redirection_code = f"""
+        <meta http-equiv="refresh" content="0; url={url_portail}">
         <script>
-            window.parent.location.href = "{url_portail}";
+            window.top.location.href = "{url_portail}";
         </script>
     """
-    components.html(redirection_js, height=0)
+    components.html(redirection_code, height=0)
+    
+    # 3. 🛑 LE COUP DE FREIN MAGIQUE
+    # On coupe immédiatement l'exécution du script pour éviter l'affichage "NON DEFINI"
+    st.stop()
 
 def est_connecte() -> bool:
   """Vérifie si un utilisateur est actuellement authentifié dans la session."""
