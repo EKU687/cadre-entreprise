@@ -200,7 +200,7 @@ def deconnecter():
             window.top.location.href = "{url_portail}";
         </script>
     """
-    st.html(redirection_code, height=0)
+    st.html(redirection_code)
 
     # 3. 🛑 LE COUP DE FREIN MAGIQUE
     st.stop()
