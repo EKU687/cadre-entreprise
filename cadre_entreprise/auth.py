@@ -3,7 +3,6 @@
 # =====================================================================
 import bcrypt
 import streamlit as st
-import streamlit.components.v1 as components
 from cadre_entreprise.database import supabase
 
 
@@ -201,7 +200,7 @@ def deconnecter():
             window.top.location.href = "{url_portail}";
         </script>
     """
-    components.html(redirection_code, height=0)
+    st.html(redirection_code, height=0)
 
     # 3. 🛑 LE COUP DE FREIN MAGIQUE
     st.stop()
