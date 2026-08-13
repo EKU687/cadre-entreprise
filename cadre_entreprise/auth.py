@@ -106,6 +106,33 @@ def changer_mon_mot_de_passe(
   except Exception as e:
     return False, f"❌ Erreur lors du changement de mot de passe : {e}"
 
+def charger_droits_utilisateur(login: str, code_app: str) -> dict:
+    """
+    Interroge la table Autorisation de Supabase pour récupérer 
+    le rôle et le périmètre de l'utilisateur sur une application spécifique.
+    """
+    try:
+        res = supabase.table("Autorisation") \
+            .select("role, perimetre") \
+            .eq("login", login) \
+            .eq("code_app", code_app) \
+            .execute()
+        
+        if res.data and len(res.data) > 0:
+            row = res.data[0]
+            return {
+                "acces": True,
+                "role": row.get("role", "UTILISATEUR"),
+                "perimetre": row.get("perimetre", "RESTREINT")
+            }
+        else:
+            # Si aucune ligne n'est trouvée -> Pas d'accès
+            return {"acces": False, "role": "AUCUN", "perimetre": "AUCUN"}
+            
+    except Exception as e:
+        print(f"⚠️ Erreur lors du chargement des droits : {e}")
+        return {"acces": False, "role": "ERREUR", "perimetre": "AUCUN"}
+
 
 def deconnecter():
     """Réinitialise la session utilisateur et force la redirection vers le portail central."""
