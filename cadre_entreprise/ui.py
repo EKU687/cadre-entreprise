@@ -7,8 +7,8 @@ import streamlit as st
 
 def afficher_ecran_login(nom_application="Portail Central", icone="🔐", **kwargs):
     """
-    Affiche l'écran de connexion principal.
-    (Note: Le changement de mot de passe obligatoire est géré séparément)
+    Affiche l'écran de connexion principal hybride (Mot de passe OU YubiKey).
+    Gère la rétrocompatibilité des arguments via **kwargs.
     """
     # 💡 ASTUCE PRO : Rétrocompatibilité absolue ! 
     # Si une app utilise la nouvelle nomenclature "nom_app", on l'écrase sur nom_application
@@ -20,26 +20,58 @@ def afficher_ecran_login(nom_application="Portail Central", icone="🔐", **kwar
         st.markdown(f"### {icone} {nom_a_afficher}")
 
         # -----------------------------------------------------------------
-        # MIRE DE CONNEXION NORMALE
+        # MIRE DE CONNEXION HYBRIDE (ONGLETS MOT DE PASSE & YUBIKEY)
         # -----------------------------------------------------------------
         with st.container(border=True):
-            with st.form("form_login_sdk"):
-                st.subheader("Connexion Enterprise")
-                f_login = st.text_input("Identifiant").lower().strip()
-                f_mdp = st.text_input("Mot de passe", type="password")
-                btn_connecter = st.form_submit_button(
-                    "Se connecter 🔓", use_container_width=True
-                )
+            tab_pass, tab_yubi = st.tabs([
+                "🔑 Mot de Passe",
+                "🛡️ Clé YubiKey",
+            ])
 
-            if btn_connecter:
-                if f_login and f_mdp:
-                    succes, msg = auth.connecter(f_login, f_mdp)
-                    if succes:
-                        st.rerun()
+            # --- ONGLET 1 : MOT DE PASSE CLASSIQUE ---
+            with tab_pass:
+                with st.form("form_login_sdk_pass"):
+                    st.subheader("Connexion Enterprise")
+                    f_login = st.text_input("Identifiant").lower().strip()
+                    f_mdp = st.text_input("Mot de passe", type="password")
+                    btn_connecter = st.form_submit_button(
+                        "Se connecter 🔓", use_container_width=True, type="primary"
+                    )
+
+                if btn_connecter:
+                    if f_login and f_mdp:
+                        succes, msg = auth.connecter(f_login, f_mdp)
+                        if succes:
+                            st.rerun()
+                        else:
+                            st.error(msg)
                     else:
-                        st.error(msg)
-                else:
-                    st.warning("⚠️ Veuillez renseigner le login et le mot de passe.")
+                        st.warning("⚠️ Veuillez renseigner le login et le mot de passe.")
+
+            # --- ONGLET 2 : YUBIKEY OTP ---
+            with tab_yubi:
+                st.caption("Insérez votre YubiKey et pressez le capteur lumineux.")
+                with st.form("form_login_sdk_yubi", clear_on_submit=True):
+                    st.subheader("Connexion Forte YubiKey")
+                    f_login_yubi = st.text_input("Identifiant Super Admin / Agent").lower().strip()
+                    f_yubi_code = st.text_input(
+                        "🔑 Pressez votre YubiKey ici",
+                        type="password",
+                        help="Placez votre curseur dans ce champ et touchez le capteur de la YubiKey.",
+                    )
+                    btn_connecter_yubi = st.form_submit_button(
+                        "Valider par YubiKey 🛡️", use_container_width=True, type="primary"
+                    )
+
+                if btn_connecter_yubi:
+                    if f_login_yubi and f_yubi_code:
+                        succes, msg = auth.connecter_par_yubikey(f_login_yubi, f_yubi_code)
+                        if succes:
+                            st.rerun()
+                        else:
+                            st.error(msg)
+                    else:
+                        st.warning("⚠️ Veuillez renseigner le login et insérer le code YubiKey.")
 
 
 def afficher_sidebar_standard():
@@ -51,8 +83,6 @@ def afficher_sidebar_standard():
             st.caption(f"Service : **{user.get('service', 'N/A')}**")
             st.caption(f"Rôle : **{user.get('role', 'USER')}**")
             st.divider()
-            
-            # (Optionnel : C'est ici que tu pourras ajouter ton futur bouton de changement de MDP)
             
             if st.button("🚪 Déconnexion", use_container_width=True):
                 auth.deconnecter()
