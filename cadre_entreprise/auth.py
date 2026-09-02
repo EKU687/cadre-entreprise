@@ -89,7 +89,7 @@ def connecter(login: str, mdp_saisi: str):
 
 
 def connecter_par_yubikey(login: str, yubi_otp: str):
-    """Authentifie un utilisateur via sa clé physique YubiKey."""
+    """Authentifie un utilisateur via sa clé physique YubiKey (avec saisie du login)."""
     login_clean = str(login).lower().strip()
 
     if not login_clean or not yubi_otp:
@@ -118,6 +118,71 @@ def connecter_par_yubikey(login: str, yubi_otp: str):
 
     except Exception as e:
         return False, f"❌ Erreur d'authentification YubiKey : {e}"
+
+
+def connecter_par_yubikey_directe(yubikey_otp: str) -> tuple[bool, str]:
+    """
+    🎯 NOUVEAUTÉ 1-CLICK : Identifie et connecte un utilisateur UNIQUEMENT via sa YubiKey.
+    Extrait le Public ID (12 car.), cherche le compte associé dans Supabase, puis valide la session.
+    """
+    otp_clean = yubikey_otp.strip().lower()
+
+    if not otp_clean or len(otp_clean) < 32:
+        return False, "⚠️ Veuillez insérer ou toucher votre clé YubiKey."
+
+    # Extraction du Device ID / Public ID (les 12 premiers caractères de l'OTP)
+    device_id = otp_clean[:12]
+
+    try:
+        # 1. Recherche directe dans la table Utilisateur via yubikey_public_id
+        res_u = (
+            supabase.table("Utilisateur")
+            .select("*")
+            .eq("yubikey_public_id", device_id)
+            .execute()
+        )
+
+        user = None
+        if res_u.data and len(res_u.data) > 0:
+            user = res_u.data[0]
+        else:
+            # 2. Recherche alternative dans User_Yubikeys (si table multi-clés)
+            res_yk = (
+                supabase.table("User_Yubikeys")
+                .select("user_id")
+                .eq("yubikey_id", device_id)
+                .execute()
+            )
+            if res_yk.data and len(res_yk.data) > 0:
+                user_id = res_yk.data[0].get("user_id")
+                res_u2 = (
+                    supabase.table("Utilisateur")
+                    .select("*")
+                    .eq("id", user_id)
+                    .execute()
+                )
+                if res_u2.data:
+                    user = res_u2.data[0]
+
+        if not user:
+            return (
+                False,
+                f"❌ Clé YubiKey non reconnue (`{device_id}`). Veuillez l'enregistrer dans la gestion des comptes.",
+            )
+
+        # 3. Validation de la clé
+        if valider_yubikey_otp(otp_clean, user):
+            st.session_state["utilisateur"] = user
+            st.session_state["connecte"] = True
+            return (
+                True,
+                f"🛡️ **Connexion Forte YubiKey réussie !** Bienvenue **{user.get('nom', user.get('login'))}**.",
+            )
+        else:
+            return False, "❌ Validation de la clé YubiKey échouée."
+
+    except Exception as e:
+        return False, f"❌ Erreur d'authentification automatique YubiKey : {e}"
 
 
 def changer_mon_mot_de_passe(
